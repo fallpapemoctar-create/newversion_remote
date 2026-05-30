@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/status_chip.dart';
 import 'models/invoice_model.dart';
 import 'services/facturation_service.dart';
 
@@ -112,88 +115,122 @@ class _FacturationScreenState extends State<FacturationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Facturation'),
-            if (_total > 0)
-              Text(
-                '$_total facture${_total > 1 ? 's' : ''}',
-                style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
-              ),
-          ],
-        ),
-        actions: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.filter_list),
-                onPressed: () => setState(() => _showFilters = !_showFilters),
-                tooltip: 'Filtres',
-              ),
-              if (_activeFilterCount > 0)
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '$_activeFilterCount',
-                        style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Création de facture à venir')),
-        ),
-        icon: const Icon(Icons.add),
-        label: const Text('Créer une facture'),
-        backgroundColor: AppTheme.primary,
-        foregroundColor: Colors.white,
-      ),
       body: Column(
         children: [
-          // ── KPI cards ─────────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: _buildKpiRow(),
+          Container(
+            padding: const EdgeInsets.fromLTRB(24, 22, 24, 16),
+            child: Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Facturation',
+                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.textPrimary,
+                                ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '$_total facture${_total > 1 ? 's' : ''} · Gérez et suivez vos factures clients',
+                            style: const TextStyle(
+                              color: AppTheme.textMuted,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => setState(() => _showFilters = !_showFilters),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _showFilters ? AppTheme.primarySoft : AppTheme.surface,
+                            foregroundColor: _showFilters ? AppTheme.primary : AppTheme.textPrimary,
+                            side: BorderSide(color: _showFilters ? AppTheme.primary : AppTheme.border),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            elevation: 0,
+                          ),
+                          icon: const Icon(Icons.filter_list, size: 16),
+                          label: const Text('Filtres', style: TextStyle(fontSize: 13)),
+                        ),
+                        if (_activeFilterCount > 0)
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              width: 22,
+                              height: 22,
+                              decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                              child: Center(
+                                child: Text(
+                                  '$_activeFilterCount',
+                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: _showCreateDraftDialog,
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Créer une facture', style: TextStyle(fontSize: 13)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        elevation: 0,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    decoration: InputDecoration(
+                      hintText: 'Rechercher par référence, client…',
+                      prefixIcon: const Icon(Icons.search, size: 24, color: AppTheme.textMuted),
+                      suffixIcon: _searchCtrl.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close, color: AppTheme.textMuted),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                _search();
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (_) => setState(() {}),
+                    onSubmitted: (_) => _search(),
+                    textInputAction: TextInputAction.search,
+                  ),
+                ),
+              ],
+            ),
           ),
 
-          // ── Search bar ────────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: TextField(
-              controller: _searchCtrl,
-              decoration: InputDecoration(
-                hintText: 'Rechercher par référence, client…',
-                prefixIcon: const Icon(Icons.search, color: AppTheme.textMuted),
-                suffixIcon: _searchCtrl.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.close, color: AppTheme.textMuted),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          _search();
-                        },
-                      )
-                    : null,
-              ),
-              onSubmitted: (_) => _search(),
-              textInputAction: TextInputAction.search,
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+            child: _buildKpiRow(),
           ),
 
           // ── Filters panel ─────────────────────────────────────────────────
@@ -214,18 +251,14 @@ class _FacturationScreenState extends State<FacturationScreen> {
                   icon: Icons.table_chart,
                   label: 'Excel',
                   color: AppTheme.success,
-                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Export Excel à venir')),
-                  ),
+                    onTap: _exportCsv,
                 ),
                 const SizedBox(width: 8),
                 _ActionBtn(
                   icon: Icons.download,
                   label: 'CSV',
                   color: const Color(0xFF0EA5E9),
-                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Export CSV à venir')),
-                  ),
+                    onTap: _exportCsv,
                 ),
                 const Spacer(),
                 if (_total > _pageSize)
@@ -255,6 +288,84 @@ class _FacturationScreenState extends State<FacturationScreen> {
     if (_amountMinCtrl.text.isNotEmpty) count++;
     if (_amountMaxCtrl.text.isNotEmpty) count++;
     return count;
+  }
+
+  Future<void> _exportCsv() async {
+    final rows = <String>[
+      'Reference;Client;Total HT;Total TTC;Statut;Date',
+      ..._invoices.map(
+        (i) => '${i.ref};${i.clientName};${i.totalHT.toStringAsFixed(2)};${i.totalTTC.toStringAsFixed(2)};${i.statusLabel};${i.date ?? ''}',
+      ),
+    ];
+    await Clipboard.setData(ClipboardData(text: rows.join('\n')));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Export CSV copie (${_invoices.length} lignes).')),
+    );
+  }
+
+  Future<void> _showCreateDraftDialog() async {
+    final clientCtrl = TextEditingController();
+    final monthCtrl = TextEditingController(
+      text: '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}',
+    );
+    final totalCtrl = TextEditingController(text: '0');
+
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Creer un brouillon de facture'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: clientCtrl, decoration: const InputDecoration(labelText: 'Client')),
+            const SizedBox(height: 10),
+            TextField(controller: monthCtrl, decoration: const InputDecoration(labelText: 'Mois (YYYY-MM)')),
+            const SizedBox(height: 10),
+            TextField(
+              controller: totalCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Total HT'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          ElevatedButton(
+            onPressed: () async {
+              final client = clientCtrl.text.trim();
+              final month = monthCtrl.text.trim();
+              final total = double.tryParse(totalCtrl.text.trim()) ?? 0;
+              if (client.isEmpty || month.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Client et mois sont obligatoires.')),
+                );
+                return;
+              }
+              try {
+                await _service.createDraft(clientName: client, month: month, totalHt: total);
+                if (!ctx.mounted) return;
+                Navigator.pop(ctx, true);
+              } catch (e) {
+                if (!ctx.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger),
+                );
+              }
+            },
+            child: const Text('Creer'),
+          ),
+        ],
+      ),
+    );
+
+    if (created == true) {
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Brouillon cree avec succes.')),
+      );
+    }
   }
 
   // ── KPI row ────────────────────────────────────────────────────────────────
@@ -357,24 +468,54 @@ class _FacturationScreenState extends State<FacturationScreen> {
               Expanded(
                 child: TextField(
                   controller: _dateStartCtrl,
+                  readOnly: true,
                   decoration: const InputDecoration(
                     labelText: 'Date début',
-                    hintText: 'YYYY-MM-DD',
+                    hintText: 'jj/mm/aaaa',
                     isDense: true,
+                    prefixIcon: Icon(Icons.calendar_today_outlined, size: 16),
                   ),
-                  onSubmitted: (_) => _search(),
+                  onTap: () async {
+                    final d = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2030),
+                    );
+                    if (d != null) {
+                      setState(() {
+                        _dateStartCtrl.text =
+                            '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+                      });
+                    }
+                  },
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: TextField(
                   controller: _dateEndCtrl,
+                  readOnly: true,
                   decoration: const InputDecoration(
                     labelText: 'Date fin',
-                    hintText: 'YYYY-MM-DD',
+                    hintText: 'jj/mm/aaaa',
                     isDense: true,
+                    prefixIcon: Icon(Icons.calendar_today_outlined, size: 16),
                   ),
-                  onSubmitted: (_) => _search(),
+                  onTap: () async {
+                    final d = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2030),
+                    );
+                    if (d != null) {
+                      setState(() {
+                        _dateEndCtrl.text =
+                            '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+                      });
+                    }
+                  },
                 ),
               ),
             ],
@@ -461,32 +602,10 @@ class _FacturationScreenState extends State<FacturationScreen> {
       );
     }
     if (_invoices.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.receipt_long_outlined,
-              size: 64,
-              color: AppTheme.textMuted.withValues(alpha: 0.4),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Aucune facture trouvée',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Modifiez vos filtres ou créez une nouvelle facture.',
-              style: TextStyle(color: AppTheme.textMuted),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+      return EmptyState(
+        icon: Icons.receipt_long_outlined,
+        title: 'Aucune facture trouvée',
+        subtitle: 'Modifiez vos filtres ou créez une nouvelle facture.',
       );
     }
     return ListView.separated(
@@ -611,13 +730,7 @@ class _InvoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (Color statusBg, Color statusFg) = switch (invoice.fkStatut) {
-      0 => (AppTheme.textMuted.withValues(alpha: 0.1), AppTheme.textMuted),
-      1 => (AppTheme.primary.withValues(alpha: 0.1), AppTheme.primary),
-      2 => (AppTheme.success.withValues(alpha: 0.1), AppTheme.success),
-      3 => (AppTheme.danger.withValues(alpha: 0.1), AppTheme.danger),
-      _ => (AppTheme.textMuted.withValues(alpha: 0.1), AppTheme.textMuted),
-    };
+    // Couleurs remplacées par StatusChip sémantique
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -672,21 +785,7 @@ class _InvoiceCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: statusBg,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      invoice.statusLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: statusFg,
-                      ),
-                    ),
-                  ),
+                  StatusChip.fromString(invoice.statusLabel),
                 ],
               ),
             ],

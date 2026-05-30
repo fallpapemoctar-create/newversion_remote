@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/empty_state.dart';
+import '../interpretes/services/interpretes_service.dart';
 import 'models/mission_model.dart';
 import 'services/missions_service.dart';
 
@@ -30,7 +32,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
   static const int _pageSize = 50;
 
   bool _showFilters = false;
-  bool _cardsView = true;
+  bool _showStats = false;
   String _statusFilter = 'all';
 
   @override
@@ -103,11 +105,6 @@ class _MissionsScreenState extends State<MissionsScreen> {
 
   int get _totalPages => (_total / _pageSize).ceil().clamp(1, 999999);
 
-  int get _validatedCount =>
-      _missions.where((m) => m.missionStatus == 1 || m.missionStatus == 2).length;
-  int get _finishedCount => _missions.where((m) => m.missionStatus == 3).length;
-  int get _cancelledCount => _missions.where((m) => m.missionStatus == 9).length;
-
   int get _activeFilterCount {
     int count = 0;
     if (_statusFilter != 'all') count++;
@@ -127,6 +124,145 @@ class _MissionsScreenState extends State<MissionsScreen> {
     _load(reset: true);
   }
 
+  Future<void> _exportCsv() async {
+    final rows = <String>[
+      'Reference;Interprete;Client;Date;Statut',
+      ..._missions.map((m) {
+        final ref = m.referenceDevis.isNotEmpty ? m.referenceDevis : 'Mission #${m.id}';
+        return '$ref;${m.interpreteName};${m.clientName ?? ''};${_formatDate(m.dateMission ?? m.debutMission)};${m.statusLabel}';
+      }),
+    ];
+
+    await Clipboard.setData(ClipboardData(text: rows.join('\n')));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Export CSV copie (${_missions.length} lignes).')),
+    );
+  }
+
+  Future<void> _showStatsDialog() async {
+    final pending = _missions.where((m) => m.missionStatus == 0).length;
+    final confirmed = _missions.where((m) => m.missionStatus == 1).length;
+    final inProgress = _missions.where((m) => m.missionStatus == 2).length;
+    final done = _missions.where((m) => m.missionStatus == 3).length;
+    final cancelled = _missions.where((m) => m.missionStatus == 9).length;
+
+    await showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Statistiques missions'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Total: $_total'),
+            Text('En attente: $pending'),
+            Text('Confirmees: $confirmed'),
+            Text('En cours: $inProgress'),
+            Text('Terminees: $done'),
+            Text('Annulees: $cancelled'),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showCreateMissionDialog() async {
+    final interpretes = await InterpretesService().getAll();
+    if (!mounted) return;
+    if (interpretes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aucun interprete disponible pour creer une mission.')),
+      );
+      return;
+    }
+
+    int selectedInterpreterId = interpretes.first.id;
+    final labelCtrl = TextEditingController();
+    final dateCtrl = TextEditingController(
+      text: DateFormat('yyyy-MM-dd').format(DateTime.now()),
+    );
+    final startCtrl = TextEditingController(text: '09:00');
+    final durationCtrl = TextEditingController(text: '60');
+
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocalState) => AlertDialog(
+          title: const Text('Nouvelle mission'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<int>(
+                  initialValue: selectedInterpreterId,
+                  decoration: const InputDecoration(labelText: 'Interprete'),
+                  items: interpretes
+                      .map((i) => DropdownMenuItem(value: i.id, child: Text(i.displayName)))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      setLocalState(() => selectedInterpreterId = v);
+                    }
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextField(controller: labelCtrl, decoration: const InputDecoration(labelText: 'Libelle')),
+                const SizedBox(height: 10),
+                TextField(controller: dateCtrl, decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)')),
+                const SizedBox(height: 10),
+                TextField(controller: startCtrl, decoration: const InputDecoration(labelText: 'Heure debut (HH:mm)')),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: durationCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Duree (minutes)'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await _service.add({
+                    'interpreter_id': selectedInterpreterId,
+                    'label': labelCtrl.text.trim(),
+                    'datemission': dateCtrl.text.trim(),
+                    'heuredebutmission': startCtrl.text.trim(),
+                    'dureemission': int.tryParse(durationCtrl.text.trim()) ?? 60,
+                    'mission_status': 1,
+                  });
+                  if (!ctx.mounted) return;
+                  Navigator.pop(ctx, true);
+                } catch (e) {
+                  if (!ctx.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger),
+                  );
+                }
+              },
+              child: const Text('Creer'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (created == true) {
+      await _load(reset: true);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mission creee avec succes.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -134,152 +270,121 @@ class _MissionsScreenState extends State<MissionsScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            color: AppTheme.surface,
-            padding: const EdgeInsets.fromLTRB(24, 18, 24, 14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
+          if (widget.interpreteId == null)
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 22, 24, 16),
+              child: Column(
+                children: [
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        widget.interpreteNom != null
-                            ? 'Missions — ${widget.interpreteNom}'
-                            : 'Missions',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$_total mission(s) au total',
-                        style: const TextStyle(color: AppTheme.textMuted, fontSize: 14),
-                      ),
-                    ],
-                  ),
-                ),
-                if (widget.interpreteId == null) ...[
-                  IconButton(
-                    icon: Icon(
-                      _cardsView ? Icons.table_rows_outlined : Icons.grid_view_outlined,
-                    ),
-                    onPressed: () => setState(() => _cardsView = !_cardsView),
-                    tooltip: _cardsView ? 'Vue tableau' : 'Vue cartes',
-                  ),
-                  const SizedBox(width: 4),
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.filter_list_outlined),
-                        onPressed: () => setState(() => _showFilters = !_showFilters),
-                        tooltip: 'Filtres',
-                      ),
-                      if (_activeFilterCount > 0)
-                        Positioned(
-                          top: 6,
-                          right: 6,
-                          child: Container(
-                            width: 16,
-                            height: 16,
-                            decoration: const BoxDecoration(
-                              color: AppTheme.primary,
-                              shape: BoxShape.circle,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Gestion des missions',
+                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.textPrimary,
+                                  ),
                             ),
-                            child: Center(
-                              child: Text(
-                                '$_activeFilterCount',
-                                style: const TextStyle(
-                                  fontSize: 9,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
+                            const SizedBox(height: 6),
+                            Text(
+                              '$_total mission${_total > 1 ? 's' : ''} · Recherchez et gérez vos missions',
+                              style: const TextStyle(
+                                color: AppTheme.textMuted,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => setState(() => _showStats = !_showStats),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _showStats ? AppTheme.primarySoft : AppTheme.surface,
+                          foregroundColor: _showStats ? AppTheme.primary : AppTheme.textPrimary,
+                          side: BorderSide(color: _showStats ? AppTheme.primary : AppTheme.border),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.show_chart, size: 16),
+                        label: const Text('Statistiques', style: TextStyle(fontSize: 13)),
+                      ),
+                      const SizedBox(width: 12),
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () => setState(() => _showFilters = !_showFilters),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _showFilters ? AppTheme.primarySoft : AppTheme.surface,
+                              foregroundColor: _showFilters ? AppTheme.primary : AppTheme.textPrimary,
+                              side: BorderSide(color: _showFilters ? AppTheme.primary : AppTheme.border),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              elevation: 0,
+                            ),
+                            icon: const Icon(Icons.filter_list, size: 16),
+                            label: const Text('Filtres', style: TextStyle(fontSize: 13)),
+                          ),
+                          if (_activeFilterCount > 0)
+                            Positioned(
+                              top: -2,
+                              right: -2,
+                              child: Container(
+                                width: 22,
+                                height: 22,
+                                decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                                child: Center(
+                                  child: Text(
+                                    '$_activeFilterCount',
+                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                          onPressed: _showCreateMissionDialog,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          elevation: 0,
                         ),
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Nouvelle mission', style: TextStyle(fontSize: 13)),
+                      ),
                     ],
                   ),
-                ],
-                IconButton(
-                  icon: const Icon(Icons.refresh_outlined),
-                  onPressed: _load,
-                  tooltip: 'Rafraîchir',
-                ),
-              ],
-            ),
-          ),
-
-          if (widget.interpreteId == null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _KpiCard(
-                      icon: Icons.assignment_outlined,
-                      iconColor: AppTheme.primary,
-                      iconBg: AppTheme.primary.withValues(alpha: 0.1),
-                      value: '$_total',
-                      label: 'Total',
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _searchCtrl,
+                    decoration: InputDecoration(
+                      hintText: 'Référence, client, interprète, langue…',
+                      prefixIcon: const Icon(Icons.search, size: 18, color: AppTheme.textMuted),
+                      suffixIcon: _searchCtrl.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 16, color: AppTheme.textMuted),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                _load();
+                              },
+                            )
+                          : null,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _KpiCard(
-                      icon: Icons.verified_outlined,
-                      iconColor: AppTheme.success,
-                      iconBg: AppTheme.success.withValues(alpha: 0.1),
-                      value: '$_validatedCount',
-                      label: 'Validées',
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _KpiCard(
-                      icon: Icons.check_circle_outline,
-                      iconColor: AppTheme.success,
-                      iconBg: AppTheme.success.withValues(alpha: 0.1),
-                      value: '$_finishedCount',
-                      label: 'Terminées',
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _KpiCard(
-                      icon: Icons.cancel_outlined,
-                      iconColor: AppTheme.danger,
-                      iconBg: AppTheme.danger.withValues(alpha: 0.1),
-                      value: '$_cancelledCount',
-                      label: 'Annulées',
-                    ),
+                    onChanged: (_) => setState(() {}),
+                    onSubmitted: (_) => _load(),
                   ),
                 ],
-              ),
-            ),
-
-          if (widget.interpreteId == null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: TextField(
-                controller: _searchCtrl,
-                decoration: InputDecoration(
-                  hintText: 'Rechercher une mission, un interprète...',
-                  prefixIcon: const Icon(Icons.search, size: 18),
-                  suffixIcon: _searchCtrl.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
-                          onPressed: () {
-                            _searchCtrl.clear();
-                            _load();
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: AppTheme.surface,
-                ),
-                onChanged: (_) => setState(() {}),
-                onSubmitted: (_) => _load(),
               ),
             ),
 
@@ -348,22 +453,50 @@ class _MissionsScreenState extends State<MissionsScreen> {
                         Expanded(
                           child: TextField(
                             controller: _dateStartCtrl,
+                            readOnly: true,
                             decoration: const InputDecoration(
                               labelText: 'Date début',
-                              hintText: 'YYYY-MM-DD',
+                              hintText: 'jj/mm/aaaa',
                               isDense: true,
+                              prefixIcon: Icon(Icons.calendar_today_outlined, size: 16),
                             ),
+                            onTap: () async {
+                              final d = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2030),
+                              );
+                              if (d != null) {
+                                _dateStartCtrl.text =
+                                    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+                              }
+                            },
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: TextField(
                             controller: _dateEndCtrl,
+                            readOnly: true,
                             decoration: const InputDecoration(
                               labelText: 'Date fin',
-                              hintText: 'YYYY-MM-DD',
+                              hintText: 'jj/mm/aaaa',
                               isDense: true,
+                              prefixIcon: Icon(Icons.calendar_today_outlined, size: 16),
                             ),
+                            onTap: () async {
+                              final d = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2030),
+                              );
+                              if (d != null) {
+                                _dateEndCtrl.text =
+                                    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+                              }
+                            },
                           ),
                         ),
                       ],
@@ -442,20 +575,15 @@ class _MissionsScreenState extends State<MissionsScreen> {
                           )
                         : RefreshIndicator(
                             onRefresh: _load,
-                            child: _cardsView
-                                ? ListView.separated(
-                                    padding: const EdgeInsets.all(16),
-                                    itemCount: _missions.length,
-                                    separatorBuilder: (_, _) => const SizedBox(height: 8),
-                                    itemBuilder: (_, i) => _MissionCard(
-                                      mission: _missions[i],
-                                      formatDate: _formatDate,
-                                    ),
-                                  )
-                                : _MissionsTable(
-                                    missions: _missions,
-                                    formatDate: _formatDate,
-                                  ),
+                            child: ListView.separated(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _missions.length,
+                              separatorBuilder: (_, _) => const SizedBox(height: 8),
+                              itemBuilder: (_, i) => _MissionCard(
+                                mission: _missions[i],
+                                formatDate: _formatDate,
+                              ),
+                            ),
                           ),
           ),
 
@@ -489,68 +617,6 @@ class _MissionsScreenState extends State<MissionsScreen> {
                 ],
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _KpiCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final String value;
-  final String label;
-
-  const _KpiCard({
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    required this.value,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: iconColor, size: 18),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-          ),
         ],
       ),
     );
@@ -726,87 +792,3 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
-class _MissionsTable extends StatelessWidget {
-  final List<MissionModel> missions;
-  final String Function(String?) formatDate;
-
-  const _MissionsTable({required this.missions, required this.formatDate});
-
-  Color _statusColor(int status) {
-    switch (status) {
-      case 0:
-        return AppTheme.warning;
-      case 1:
-        return Colors.blue;
-      case 2:
-        return AppTheme.primary;
-      case 3:
-        return AppTheme.success;
-      case 9:
-        return AppTheme.danger;
-      default:
-        return AppTheme.textMuted;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.border),
-          ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              headingTextStyle: const TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textPrimary,
-              ),
-              columns: const [
-                DataColumn(label: Text('Référence')),
-                DataColumn(label: Text('Interprète')),
-                DataColumn(label: Text('Client')),
-                DataColumn(label: Text('Date')),
-                DataColumn(label: Text('Statut')),
-              ],
-              rows: missions.map((m) {
-                final color = _statusColor(m.missionStatus);
-                final ref = m.referenceDevis.isNotEmpty ? m.referenceDevis : 'Mission #${m.id}';
-                return DataRow(
-                  cells: [
-                    DataCell(Text(ref)),
-                    DataCell(Text(m.interpreteName.trim().isEmpty ? '—' : m.interpreteName)),
-                    DataCell(Text((m.clientName ?? '').isEmpty ? '—' : m.clientName!)),
-                    DataCell(Text(formatDate(m.dateMission ?? m.debutMission))),
-                    DataCell(
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          m.statusLabel,
-                          style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
