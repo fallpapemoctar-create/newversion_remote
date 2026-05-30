@@ -19,8 +19,8 @@ class MissionsService {
       'pageSize': pageSize.toString(),
       if (q != null && q.isNotEmpty) 'q': q,
       if (clientId != null) 'clientId': clientId.toString(),
-      'dateStart': ?dateStart,
-      'dateEnd': ?dateEnd,
+      if (dateStart != null && dateStart.isNotEmpty) 'dateStart': dateStart,
+      if (dateEnd != null && dateEnd.isNotEmpty) 'dateEnd': dateEnd,
       if (missionStatus != null) 'missionStatus': missionStatus.toString(),
     };
     final uri = Uri.parse(ApiConstants.getMissionsDataTable)

@@ -20,7 +20,6 @@ class _InterpretesScreenState extends State<InterpretesScreen> {
   bool _loading = true;
   String? _error;
   String _search = '';
-  bool _gridView = true;
   bool _showFilters = false;
   String _statusFilter = 'all';
   String _cityFilter = '';
@@ -78,20 +77,6 @@ class _InterpretesScreenState extends State<InterpretesScreen> {
     }
   }
 
-  int get _availableCount {
-    return _filtered.where((i) {
-      final s = i.status.toLowerCase();
-      return s.contains('disponible') && !s.contains('indisponible');
-    }).length;
-  }
-
-  int get _unavailableCount {
-    return _filtered.where((i) {
-      final s = i.status.toLowerCase();
-      return s.contains('indisponible');
-    }).length;
-  }
-
   int get _activeFilterCount {
     int count = 0;
     if (_statusFilter != 'all') count++;
@@ -142,6 +127,113 @@ class _InterpretesScreenState extends State<InterpretesScreen> {
     ));
   }
 
+  Future<void> _showAddInterpreteDialog() async {
+    final lastnameCtrl = TextEditingController();
+    final firstnameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final mobileCtrl = TextEditingController();
+    final languesCtrl = TextEditingController();
+    final villeCtrl = TextEditingController();
+    bool disponible = true;
+
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocalState) => AlertDialog(
+          title: const Text('Ajouter un interprète'),
+          content: SizedBox(
+            width: 430,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: lastnameCtrl,
+                    decoration: const InputDecoration(labelText: 'Nom *'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: firstnameCtrl,
+                    decoration: const InputDecoration(labelText: 'Prénom'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: emailCtrl,
+                    decoration: const InputDecoration(labelText: 'Email'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: mobileCtrl,
+                    decoration: const InputDecoration(labelText: 'Téléphone mobile'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: languesCtrl,
+                    decoration: const InputDecoration(labelText: 'Langues parlées'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: villeCtrl,
+                    decoration: const InputDecoration(labelText: 'Ville'),
+                  ),
+                  const SizedBox(height: 10),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Disponible'),
+                    value: disponible,
+                    onChanged: (v) => setLocalState(() => disponible = v),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+            ElevatedButton(
+              onPressed: () async {
+                final lastname = lastnameCtrl.text.trim();
+                if (lastname.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Le nom est obligatoire.')),
+                  );
+                  return;
+                }
+
+                try {
+                  await _service.add({
+                    'lastname': lastname,
+                    'firstname': firstnameCtrl.text.trim(),
+                    'email': emailCtrl.text.trim(),
+                    'tel_mobile': mobileCtrl.text.trim(),
+                    'langues_parlees': languesCtrl.text.trim(),
+                    'ville': villeCtrl.text.trim(),
+                    'status': disponible ? 'Disponible' : 'Indisponible',
+                  });
+                  if (!ctx.mounted) return;
+                  Navigator.pop(ctx, true);
+                } catch (e) {
+                  if (!ctx.mounted) return;
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger),
+                  );
+                }
+              },
+              child: const Text('Créer'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (created == true) {
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Interprète ajouté.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -149,146 +241,131 @@ class _InterpretesScreenState extends State<InterpretesScreen> {
       body: Column(
         children: [
           Container(
-            color: AppTheme.surface,
-            padding: const EdgeInsets.fromLTRB(24, 18, 24, 14),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFF5F7FD), Color(0xFFEEF2F8)],
+              ),
+              border: Border(bottom: BorderSide(color: AppTheme.border)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Interprètes',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.textPrimary,
-                            ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Annuaire des interprètes',
+                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.textPrimary,
+                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Row(
+                            children: [
+                              Icon(Icons.article_outlined, color: AppTheme.primary, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'FMI - Facturation des interprètes',
+                                style: TextStyle(
+                                  color: AppTheme.primary,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${_filtered.length} interprète(s)',
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 14),
+                      child: Text(
+                        '${_filtered.length} interprètes',
                         style: const TextStyle(
                           color: AppTheme.textMuted,
-                          fontSize: 14,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(_gridView ? Icons.view_list_outlined : Icons.grid_view_outlined),
-                  onPressed: () => setState(() => _gridView = !_gridView),
-                ),
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.filter_list_outlined),
-                      onPressed: () => setState(() => _showFilters = !_showFilters),
                     ),
-                    if (_activeFilterCount > 0)
-                      Positioned(
-                        top: 6,
-                        right: 6,
-                        child: Container(
-                          width: 16,
-                          height: 16,
-                          decoration: const BoxDecoration(
-                            color: AppTheme.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '$_activeFilterCount',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
-                IconButton(icon: const Icon(Icons.refresh_outlined), onPressed: _load),
-              ],
-            ),
-          ),
-
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      hintText: 'Rechercher un interprète...',
-                      prefixIcon: Icon(Icons.search_outlined, size: 18),
-                    ),
-                    onChanged: (v) => setState(() { _search = v; _applyFilter(); }),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // Count badge
+                const SizedBox(height: 18),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(10),
+                    color: AppTheme.surface.withValues(alpha: 0.78),
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: AppTheme.border),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          decoration: const InputDecoration(
+                            hintText: 'Rechercher un interprète par nom, langue, téléphone...',
+                            prefixIcon: Icon(Icons.search_outlined, size: 30),
+                          ),
+                          onChanged: (v) => setState(() {
+                            _search = v;
+                            _applyFilter();
+                          }),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () => setState(() => _showFilters = !_showFilters),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryLight,
+                              foregroundColor: AppTheme.primary,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                            ),
+                            icon: const Icon(Icons.filter_list, size: 22),
+                            label: const Text('Filtres', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                          ),
+                          if (_activeFilterCount > 0)
+                            Positioned(
+                              top: -3,
+                              right: -3,
+                              child: Container(
+                                width: 20,
+                                height: 20,
+                                decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                                child: Center(
+                                  child: Text(
+                                    '$_activeFilterCount',
+                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(width: 14),
+                      ElevatedButton.icon(
+                        onPressed: _showAddInterpreteDialog,
+                        icon: const Icon(Icons.add, size: 22),
+                        label: const Text('Ajouter', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                        ),
                       ),
                     ],
-                  ),
-                  child: Text(
-                    '${_filtered.length}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _KpiCard(
-                    icon: Icons.people_outline,
-                    iconColor: AppTheme.primary,
-                    iconBg: AppTheme.primary.withValues(alpha: 0.1),
-                    value: '${_filtered.length}',
-                    label: 'Total',
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _KpiCard(
-                    icon: Icons.check_circle_outline,
-                    iconColor: AppTheme.success,
-                    iconBg: AppTheme.success.withValues(alpha: 0.1),
-                    value: '$_availableCount',
-                    label: 'Disponibles',
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _KpiCard(
-                    icon: Icons.remove_circle_outline,
-                    iconColor: AppTheme.danger,
-                    iconBg: AppTheme.danger.withValues(alpha: 0.1),
-                    value: '$_unavailableCount',
-                    label: 'Indisponibles',
                   ),
                 ),
               ],
@@ -370,31 +447,6 @@ class _InterpretesScreenState extends State<InterpretesScreen> {
             secondChild: const SizedBox.shrink(),
           ),
 
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-            child: Row(
-              children: [
-                _ActionButton(
-                  icon: Icons.table_chart_outlined,
-                  label: 'Excel',
-                  color: AppTheme.success,
-                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Export Excel à venir')),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _ActionButton(
-                  icon: Icons.download_outlined,
-                  label: 'CSV',
-                  color: const Color(0xFF0EA5E9),
-                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Export CSV à venir')),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
           // Content
           Expanded(
             child: _loading
@@ -409,119 +461,14 @@ class _InterpretesScreenState extends State<InterpretesScreen> {
                           )
                         : RefreshIndicator(
                             onRefresh: _load,
-                            child: _gridView
-                                ? _GridContent(
-                                    items: _filtered,
-                                    onTap: _openMissions,
-                                    onDelete: _confirmDelete,
-                                  )
-                                : _ListContent(
-                                    items: _filtered,
-                                    onTap: _openMissions,
-                                    onDelete: _confirmDelete,
-                                  ),
+                            child: _GridContent(
+                              items: _filtered,
+                              onTap: _openMissions,
+                              onDelete: _confirmDelete,
+                            ),
                           ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {},
-        icon: const Icon(Icons.person_add_outlined),
-        label: const Text('Ajouter'),
-        backgroundColor: AppTheme.primary,
-        foregroundColor: Colors.white,
-      ),
-    );
-  }
-}
-
-class _KpiCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final String value;
-  final String label;
-
-  const _KpiCard({
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    required this.value,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: iconColor, size: 18),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 17,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 15),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -556,23 +503,3 @@ class _GridContent extends StatelessWidget {
   }
 }
 
-class _ListContent extends StatelessWidget {
-  final List<InterpreteModel> items;
-  final ValueChanged<InterpreteModel> onTap;
-  final ValueChanged<InterpreteModel> onDelete;
-  const _ListContent({required this.items, required this.onTap, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: items.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (_, i) => InterpreteCard(
-        interprete: items[i],
-        onTap: () => onTap(items[i]),
-        onDelete: () => onDelete(items[i]),
-      ),
-    );
-  }
-}

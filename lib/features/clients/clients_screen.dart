@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/empty_state.dart';
 import 'models/client_model.dart';
@@ -72,6 +73,22 @@ class _ClientsScreenState extends State<ClientsScreen> {
     });
   }
 
+  Future<void> _exportCsv() async {
+    final rows = <String>[
+      'Id;Client;Ville;Email;Statut',
+      ..._filtered.map((c) {
+        final status = c.status == 1 ? 'Actif' : 'Inactif';
+        return '${c.id};${c.name};${c.town ?? ''};${c.email ?? ''};$status';
+      }),
+    ];
+
+    await Clipboard.setData(ClipboardData(text: rows.join('\n')));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Export copie (${_filtered.length} lignes).')),
+    );
+  }
+
   Future<void> _confirmDelete(ClientModel client) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -109,90 +126,105 @@ class _ClientsScreenState extends State<ClientsScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Container(
-            color: AppTheme.surface,
-            padding: const EdgeInsets.fromLTRB(24, 18, 24, 14),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(24, 22, 24, 16),
+            child: Column(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Tiers', style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-                      const SizedBox(height: 4),
-                      Text('${_filtered.length} client(s)',
-                          style: TextStyle(color: AppTheme.textMuted, fontSize: 14)),
-                    ],
-                  ),
-                ),
-                Stack(
-                  clipBehavior: Clip.none,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconButton(
-                      onPressed: () => setState(() => _showFilters = !_showFilters),
-                      icon: const Icon(Icons.filter_list_outlined),
-                      tooltip: 'Filtres',
-                    ),
-                    if (_activeFilterCount > 0)
-                      Positioned(
-                        top: 6,
-                        right: 6,
-                        child: Container(
-                          width: 16,
-                          height: 16,
-                          decoration: const BoxDecoration(
-                            color: AppTheme.primary,
-                            shape: BoxShape.circle,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Gestion des tiers',
+                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.textPrimary,
+                                ),
                           ),
-                          child: Center(
-                            child: Text(
-                              '$_activeFilterCount',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
+                          const SizedBox(height: 6),
+                          Text(
+                            '${_filtered.length} client(s)',
+                            style: const TextStyle(
+                              color: AppTheme.textMuted,
+                              fontSize: 32,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => setState(() => _showFilters = !_showFilters),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.surface,
+                            foregroundColor: AppTheme.textPrimary,
+                            side: const BorderSide(color: AppTheme.border),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                          ),
+                          icon: const Icon(Icons.filter_list_outlined, size: 22),
+                          label: const Text('Filtres', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                        ),
+                        if (_activeFilterCount > 0)
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              width: 20,
+                              height: 20,
+                              decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                              child: Center(
+                                child: Text(
+                                  '$_activeFilterCount',
+                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
+                      ],
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton.icon(
+                      onPressed: () => _showClientForm(),
+                      icon: const Icon(Icons.add, size: 22),
+                      label: const Text('Nouveau client', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                    ),
                   ],
                 ),
-                FilledButton.icon(
-                  onPressed: () => _showClientForm(),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Nouveau client'),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    decoration: InputDecoration(
+                      hintText: 'Rechercher un client...',
+                      prefixIcon: const Icon(Icons.search, size: 24),
+                      suffixIcon: _searchCtrl.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 20),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                _load();
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (v) => _load(q: v),
+                  ),
                 ),
               ],
-            ),
-          ),
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchCtrl,
-              decoration: InputDecoration(
-                hintText: 'Rechercher un client...',
-                prefixIcon: const Icon(Icons.search, size: 18),
-                suffixIcon: _searchCtrl.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          _load();
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppTheme.border),
-                ),
-                filled: true,
-                fillColor: AppTheme.surface,
-              ),
-              onChanged: (v) => _load(q: v),
             ),
           ),
 
@@ -310,18 +342,14 @@ class _ClientsScreenState extends State<ClientsScreen> {
                   icon: Icons.table_chart_outlined,
                   label: 'Excel',
                   color: AppTheme.success,
-                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Export Excel à venir')),
-                  ),
+                  onTap: _exportCsv,
                 ),
                 const SizedBox(width: 8),
                 _ClientsAction(
                   icon: Icons.download_outlined,
                   label: 'CSV',
                   color: const Color(0xFF0EA5E9),
-                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Export CSV à venir')),
-                  ),
+                  onTap: _exportCsv,
                 ),
               ],
             ),

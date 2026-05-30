@@ -53,6 +53,28 @@ class MissionModel {
     this.dateCreation,
   });
 
+  static int _asInt(dynamic value, {int fallback = 0}) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? fallback;
+    return fallback;
+  }
+
+  static int? _asNullableInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static double? _asNullableDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
   factory MissionModel.fromJson(Map<String, dynamic> json) {
     List<String> types = [];
     final rawTypes = json['mission_types'];
@@ -63,26 +85,26 @@ class MissionModel {
     }
 
     return MissionModel(
-      id: json['rowid'] as int? ?? json['id'] as int? ?? 0,
+      id: _asInt(json['rowid'] ?? json['id']),
       referenceDevis: json['reference_devis'] as String? ?? '',
       label: json['label'] as String?,
-      interpreteId: json['nominterprete'] as int? ?? json['interpreter_id'] as int? ?? 0,
+      interpreteId: _asInt(json['nominterprete'] ?? json['interpreter_id']),
       interpreteFirstname: json['firstname'] as String? ?? '',
       interpreteLastname: json['lastname'] as String? ?? '',
-      clientId: json['client_id'] as int?,
+      clientId: _asNullableInt(json['client_id']),
       clientName: json['client_name'] as String?,
-      contactId: json['contact_id'] as int?,
+      contactId: _asNullableInt(json['contact_id']),
       dateMission: json['datemission'] as String?,
       heureDebutMission: json['heuredebutmission'] as String?,
-      dureeMission: json['dureemission'] as int?,
+      dureeMission: _asNullableInt(json['dureemission']),
       debutMission: json['debutmission'] as String?,
       finMission: json['finmission'] as String?,
-      missionStatus: json['mission_status'] as int? ?? 0,
+      missionStatus: _asInt(json['mission_status']),
       missionTypes: types,
       produitRef: json['produit_ref'] as String?,
       produitLabel: json['produit_label'] as String?,
-      produitPrice: (json['produit_price'] as num?)?.toDouble(),
-      idProduitService: json['id_produit_service'] as int?,
+      produitPrice: _asNullableDouble(json['produit_price']),
+      idProduitService: _asNullableInt(json['id_produit_service']),
       billedStatus: json['billed_status'] as String?,
       clientBilledStatus: json['client_billed_status'] as String?,
       clientInvoiceNumber: json['client_invoice_number'] as String?,

@@ -7,24 +7,24 @@ class AppTheme {
   static const Color primaryLight = Color(0xFFCACEFB);
   static const Color primarySoft = Color(0xFFE5E6FA);
 
-  // Semantic status colors (DSFR)
-  static const Color statusDraftBg   = Color(0xFFF3F4F6);
+  // Semantic status colors (DSFR — exact Figma values)
+  static const Color statusDraftBg   = Color(0xFFF1F5F9);
   static const Color statusDraftFg   = Color(0xFF6B7280);
-  static const Color statusSentBg    = Color(0xFFEFF6FF);
+  static const Color statusSentBg    = Color(0xFFDBEAFE);
   static const Color statusSentFg    = Color(0xFF1D4ED8);
-  static const Color statusAcceptBg  = Color(0xFFF0FDF4);
-  static const Color statusAcceptFg  = Color(0xFF16A34A);
-  static const Color statusRejectBg  = Color(0xFFFEF2F2);
-  static const Color statusRejectFg  = Color(0xFFDC2626);
-  static const Color statusExpiredBg = Color(0xFFFFFBEB);
+  static const Color statusAcceptBg  = Color(0xFFDCFCE7);
+  static const Color statusAcceptFg  = Color(0xFF15803D);
+  static const Color statusRejectBg  = Color(0xFFFEE2E2);
+  static const Color statusRejectFg  = Color(0xFFB91C1C);
+  static const Color statusExpiredBg = Color(0xFFFEF3C7);
   static const Color statusExpiredFg = Color(0xFFD97706);
-  static const Color statusSpecialBg = Color(0xFFF5F3FF);
-  static const Color statusSpecialFg = Color(0xFF7C3AED);
-  static const Color statusValidBg   = Color(0xFFECFDF5);
-  static const Color statusValidFg   = Color(0xFF065F46);
-  static const Color statusLockedBg  = Color(0xFFF9FAFB);
-  static const Color statusLockedFg  = Color(0xFF374151);
-  static const Color background = Color(0xFFF3F4F8);
+  static const Color statusSpecialBg = Color(0xFFEDE9FE);
+  static const Color statusSpecialFg = Color(0xFF6D28D9);
+  static const Color statusValidBg   = Color(0xFFE8EEFF);
+  static const Color statusValidFg   = Color(0xFF000091);
+  static const Color statusLockedBg  = Color(0xFFFEF3C7);
+  static const Color statusLockedFg  = Color(0xFF92400E);
+  static const Color background = Color(0xFFF6F7FB);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceAlt = Color(0xFFF7F8FC);
   static const Color border = Color(0xFFE5E7EF);

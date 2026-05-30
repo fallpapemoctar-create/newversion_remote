@@ -9,12 +9,12 @@ class MainShell extends StatelessWidget {
   const MainShell({super.key, required this.child});
 
   static const _navItems = [
-    _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: 'Tableau de bord', path: '/dashboard'),
-    _NavItem(icon: Icons.people_outline, activeIcon: Icons.people, label: 'Interprètes', path: '/interpretes'),
-    _NavItem(icon: Icons.assignment_outlined, activeIcon: Icons.assignment, label: 'Missions', path: '/missions'),
-    _NavItem(icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long, label: 'Facturation', path: '/facturation'),
-    _NavItem(icon: Icons.business_outlined, activeIcon: Icons.business, label: 'Tiers', path: '/clients'),
-    _NavItem(icon: Icons.admin_panel_settings_outlined, activeIcon: Icons.admin_panel_settings, label: 'Admin', path: '/admin'),
+    _NavItem(label: 'Tableau de bord', path: '/dashboard'),
+    _NavItem(label: 'Interprètes', path: '/interpretes'),
+    _NavItem(label: 'Missions', path: '/missions'),
+    _NavItem(label: 'Facturation', path: '/facturation'),
+    _NavItem(label: 'Tiers', path: '/clients'),
+    _NavItem(label: 'Admin', path: '/admin'),
   ];
 
   @override
@@ -39,6 +39,7 @@ class _WideLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     final idx = _indexFromPath(location);
+    final themesActive = location.startsWith('/themes');
     final user = context.read<AuthService>().currentUser;
 
     return Scaffold(
@@ -111,49 +112,31 @@ class _WideLayout extends StatelessWidget {
                           final item = MainShell._navItems[i];
                           final active = i == idx;
                           return Padding(
-                            padding: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.only(right: 6),
                             child: InkWell(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(12),
                               onTap: () => context.go(item.path),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                                 decoration: BoxDecoration(
                                   color: active
                                       ? AppTheme.primarySoft
                                       : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: active ? AppTheme.primarySoft : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: active ? AppTheme.primary : Colors.transparent,
+                                      width: 3,
+                                    ),
                                   ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      active ? item.activeIcon : item.icon,
-                                      size: 18,
-                                      color: active ? AppTheme.primary : AppTheme.textMuted,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      item.label,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                                        color: active ? AppTheme.primary : AppTheme.textMuted,
-                                      ),
-                                    ),
-                                    if (active) ...[
-                                      const SizedBox(width: 10),
-                                      Container(
-                                        width: 4,
-                                        height: 4,
-                                        decoration: const BoxDecoration(
-                                          color: AppTheme.primary,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
+                                child: Text(
+                                  item.label,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                                    color: active ? AppTheme.primary : AppTheme.textMuted,
+                                  ),
                                 ),
                               ),
                             ),
@@ -161,11 +144,12 @@ class _WideLayout extends StatelessWidget {
                         }),
                         const Spacer(),
                         TextButton.icon(
-                          onPressed: () {},
+                          onPressed: () => context.go('/themes'),
                           icon: const Icon(Icons.palette_outlined, size: 18),
                           label: const Text('Thèmes'),
                           style: TextButton.styleFrom(
-                            foregroundColor: AppTheme.textMuted,
+                            foregroundColor: themesActive ? AppTheme.primary : AppTheme.textMuted,
+                            backgroundColor: themesActive ? AppTheme.primarySoft : Colors.transparent,
                           ),
                         ),
                       ],
@@ -198,36 +182,151 @@ class _NarrowLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     final idx = _indexFromPath(location);
+    final themesActive = location.startsWith('/themes');
+    final user = context.read<AuthService>().currentUser;
 
     return Scaffold(
-      body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: idx,
-        onDestinationSelected: (i) => context.go(MainShell._navItems[i].path),
-        backgroundColor: AppTheme.surface,
-        indicatorColor: AppTheme.primary.withValues(alpha: 0.12),
-        destinations: MainShell._navItems
-            .map(
-              (item) => NavigationDestination(
-                icon: Icon(item.icon),
-                selectedIcon: Icon(item.activeIcon, color: AppTheme.primary),
-                label: item.label,
+      backgroundColor: AppTheme.background,
+      body: Column(
+        children: [
+          Container(
+            color: AppTheme.surface,
+            child: SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'AMI',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'AMI - Assistance missions interprètes',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.logout, size: 18),
+                          color: AppTheme.textMuted,
+                          onPressed: () async {
+                            await context.read<AuthService>().logout();
+                            if (context.mounted) context.go('/login');
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    child: SizedBox(
+                      height: 40,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          ...List.generate(MainShell._navItems.length, (i) {
+                            final item = MainShell._navItems[i];
+                            final active = i == idx;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(10),
+                                onTap: () => context.go(item.path),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: active ? AppTheme.primarySoft : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        color: active ? AppTheme.primary : Colors.transparent,
+                                        width: 3,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      item.label,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                                        color: active ? AppTheme.primary : AppTheme.textMuted,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                          TextButton.icon(
+                            onPressed: () => context.go('/themes'),
+                            icon: const Icon(Icons.palette_outlined, size: 14),
+                            label: const Text('Thèmes'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: themesActive ? AppTheme.primary : AppTheme.textMuted,
+                              backgroundColor: themesActive ? AppTheme.primarySoft : Colors.transparent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (user?.displayName != null && user!.displayName.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12, bottom: 6),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'Bienvenue ${user.displayName}',
+                          style: const TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            )
-            .toList(),
+            ),
+          ),
+          const Divider(height: 1, color: AppTheme.border),
+          Expanded(child: child),
+        ],
       ),
     );
   }
 }
 
 class _NavItem {
-  final IconData icon;
-  final IconData activeIcon;
   final String label;
   final String path;
   const _NavItem({
-    required this.icon,
-    required this.activeIcon,
     required this.label,
     required this.path,
   });

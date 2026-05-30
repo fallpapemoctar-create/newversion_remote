@@ -127,53 +127,80 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: ListView(
                     padding: const EdgeInsets.all(20),
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: AppTheme.border),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Tableau de bord',
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.textPrimary,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Tableau de bord',
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppTheme.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Vue d\'ensemble de l\'activité et des performances',
+                                        style: TextStyle(fontSize: 15, color: AppTheme.textMuted),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Vue d\'ensemble de l\'activité et des performances',
-                                  style: TextStyle(fontSize: 14, color: AppTheme.textMuted),
+                                const SizedBox(width: 10),
+                                ElevatedButton.icon(
+                                  onPressed: _load,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.surface,
+                                    foregroundColor: AppTheme.textPrimary,
+                                    side: const BorderSide(color: AppTheme.border),
+                                  ),
+                                  icon: const Icon(Icons.refresh_outlined, size: 18),
+                                  label: const Text('Rafraichir'),
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              _PeriodChip(
-                                label: 'Semaine',
-                                active: _period == 'week',
-                                onTap: () => setState(() => _period = 'week'),
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _PeriodChip(
+                                    label: 'Semaine',
+                                    active: _period == 'week',
+                                    onTap: () => setState(() => _period = 'week'),
+                                  ),
+                                  _PeriodChip(
+                                    label: 'Mois',
+                                    active: _period == 'month',
+                                    onTap: () => setState(() => _period = 'month'),
+                                  ),
+                                  _PeriodChip(
+                                    label: 'Annee',
+                                    active: _period == 'year',
+                                    onTap: () => setState(() => _period = 'year'),
+                                  ),
+                                ],
                               ),
-                              _PeriodChip(
-                                label: 'Mois',
-                                active: _period == 'month',
-                                onTap: () => setState(() => _period = 'month'),
-                              ),
-                              _PeriodChip(
-                                label: 'Annee',
-                                active: _period == 'year',
-                                onTap: () => setState(() => _period = 'year'),
-                              ),
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
 
                       LayoutBuilder(
                         builder: (_, constraints) {

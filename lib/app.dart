@@ -9,6 +9,7 @@ import 'features/missions/missions_screen.dart';
 import 'features/clients/clients_screen.dart';
 import 'features/facturation/facturation_screen.dart';
 import 'features/admin/admin_screen.dart';
+import 'features/theme/theme_screen.dart';
 import 'shell/main_shell.dart';
 import 'core/theme/app_theme.dart';
 
@@ -50,6 +51,7 @@ class _AmiAppState extends State<AmiApp> {
             GoRoute(path: '/clients', builder: (_, _) => const ClientsScreen()),
             GoRoute(path: '/facturation', builder: (_, _) => const FacturationScreen()),
             GoRoute(path: '/admin', builder: (_, _) => const AdminScreen()),
+            GoRoute(path: '/themes', builder: (_, _) => const ThemeScreen()),
           ],
         ),
       ],

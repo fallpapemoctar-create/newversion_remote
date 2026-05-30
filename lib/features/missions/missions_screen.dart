@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/status_chip.dart';
 import '../interpretes/services/interpretes_service.dart';
 import 'models/mission_model.dart';
 import 'services/missions_service.dart';
@@ -140,31 +141,99 @@ class _MissionsScreenState extends State<MissionsScreen> {
     );
   }
 
-  Future<void> _showStatsDialog() async {
+  Widget _buildStatsPanel() {
     final pending = _missions.where((m) => m.missionStatus == 0).length;
     final confirmed = _missions.where((m) => m.missionStatus == 1).length;
     final inProgress = _missions.where((m) => m.missionStatus == 2).length;
     final done = _missions.where((m) => m.missionStatus == 3).length;
     final cancelled = _missions.where((m) => m.missionStatus == 9).length;
 
-    await showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Statistiques missions'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Total: $_total'),
-            Text('En attente: $pending'),
-            Text('Confirmees: $confirmed'),
-            Text('En cours: $inProgress'),
-            Text('Terminees: $done'),
-            Text('Annulees: $cancelled'),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer')),
+    final items = [
+      ('En attente', pending, AppTheme.statusExpiredFg, AppTheme.statusExpiredBg),
+      ('Confirmées', confirmed, AppTheme.statusSentFg, AppTheme.statusSentBg),
+      ('En cours', inProgress, AppTheme.primary, AppTheme.primarySoft),
+      ('Terminées', done, AppTheme.statusAcceptFg, AppTheme.statusAcceptBg),
+      ('Annulées', cancelled, AppTheme.statusRejectFg, AppTheme.statusRejectBg),
+    ];
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppTheme.primarySoft,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.trending_up, size: 18, color: AppTheme.primary),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Statistiques',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary),
+                  ),
+                  Text(
+                    'Page courante · $_total missions au total',
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: items.map((item) {
+              final (label, count, fg, bg) = item;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$count',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: fg,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      style: TextStyle(fontSize: 11, color: fg, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
         ],
       ),
     );
@@ -242,7 +311,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
                   Navigator.pop(ctx, true);
                 } catch (e) {
                   if (!ctx.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(ctx).showSnackBar(
                     SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger),
                   );
                 }
@@ -291,10 +360,10 @@ class _MissionsScreenState extends State<MissionsScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              '$_total mission${_total > 1 ? 's' : ''} · Recherchez et gérez vos missions',
+                              '$_total mission${_total > 1 ? 's' : ''}',
                               style: const TextStyle(
                                 color: AppTheme.textMuted,
-                                fontSize: 13,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w400,
                               ),
                             ),
@@ -312,8 +381,8 @@ class _MissionsScreenState extends State<MissionsScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           elevation: 0,
                         ),
-                        icon: const Icon(Icons.show_chart, size: 16),
-                        label: const Text('Statistiques', style: TextStyle(fontSize: 13)),
+                        icon: const Icon(Icons.trending_up, size: 16),
+                        label: Text(_showStats ? 'Masquer stats' : 'Statistiques', style: const TextStyle(fontSize: 13)),
                       ),
                       const SizedBox(width: 12),
                       Stack(
@@ -369,7 +438,7 @@ class _MissionsScreenState extends State<MissionsScreen> {
                   TextField(
                     controller: _searchCtrl,
                     decoration: InputDecoration(
-                      hintText: 'Référence, client, interprète, langue…',
+                      hintText: 'Recherche par référence, client, interprète, langue...',
                       prefixIcon: const Icon(Icons.search, size: 18, color: AppTheme.textMuted),
                       suffixIcon: _searchCtrl.text.isNotEmpty
                           ? IconButton(
@@ -386,6 +455,15 @@ class _MissionsScreenState extends State<MissionsScreen> {
                   ),
                 ],
               ),
+            ),
+
+          if (widget.interpreteId == null)
+            AnimatedCrossFade(
+              duration: const Duration(milliseconds: 250),
+              crossFadeState:
+                  _showStats ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+              firstChild: _buildStatsPanel(),
+              secondChild: const SizedBox.shrink(),
             ),
 
           if (widget.interpreteId == null)
@@ -529,18 +607,14 @@ class _MissionsScreenState extends State<MissionsScreen> {
                     icon: Icons.table_chart_outlined,
                     label: 'Excel',
                     color: AppTheme.success,
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Export Excel à venir')),
-                    ),
+                    onTap: _exportCsv,
                   ),
                   const SizedBox(width: 8),
                   _ActionButton(
                     icon: Icons.download_outlined,
                     label: 'CSV',
                     color: const Color(0xFF0EA5E9),
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Export CSV à venir')),
-                    ),
+                    onTap: _exportCsv,
                   ),
                   const Spacer(),
                   if (_total > _pageSize)
@@ -661,15 +735,6 @@ class _MissionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColors = <int, Color>{
-      0: Colors.orange,
-      1: Colors.blue,
-      2: AppTheme.primary,
-      3: AppTheme.success,
-      9: AppTheme.danger,
-    };
-    final color = statusColors[mission.missionStatus] ?? AppTheme.textMuted;
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -678,8 +743,8 @@ class _MissionCard extends StatelessWidget {
         border: Border.all(color: AppTheme.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
@@ -697,21 +762,11 @@ class _MissionCard extends StatelessWidget {
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
-                    color: AppTheme.textPrimary,
+                    color: AppTheme.primary,
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  mission.statusLabel,
-                  style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-              ),
+              StatusChip.fromString(mission.statusLabel),
             ],
           ),
           if (mission.label != null && mission.label!.isNotEmpty) ...[

@@ -17,35 +17,28 @@ class InterpreteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final secondary = [
+      if ((interprete.languesParlees ?? '').trim().isNotEmpty)
+        interprete.languesParlees!.trim(),
+      if ((interprete.ville ?? '').trim().isNotEmpty) interprete.ville!.trim(),
+    ].join(' - ');
+
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppTheme.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Avatar
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
-                  child: Text(
-                    interprete.initials,
-                    style: const TextStyle(
-                      color: AppTheme.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,81 +46,75 @@ class InterpreteCard extends StatelessWidget {
                       Text(
                         interprete.displayName,
                         style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 22,
                           color: AppTheme.textPrimary,
                         ),
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (interprete.numero != null)
-                        Text(
-                          '#${interprete.numero}',
-                          style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                      const SizedBox(height: 4),
+                      Text(
+                        secondary.isEmpty ? 'Cissam18' : secondary,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: AppTheme.textMuted,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 10),
                 StatusChip.fromString(interprete.status),
               ],
             ),
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
-
-            // Details
-            if (interprete.email != null)
-              _InfoRow(icon: Icons.email_outlined, text: interprete.email!),
+            const SizedBox(height: 18),
             if (interprete.telMobile != null)
-              _InfoRow(icon: Icons.phone_outlined, text: interprete.telMobile!),
-            if (interprete.ville != null)
-              _InfoRow(icon: Icons.location_on_outlined, text: interprete.ville!),
-
-            // Languages
-            if (interprete.languesList.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: interprete.languesList.take(3).map((l) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    l,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.primary),
-                  ),
-                )).toList(),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _InfoRow(icon: Icons.phone_outlined, text: interprete.telMobile!),
               ),
-            ],
-
-            // Actions
-            const SizedBox(height: 12),
+            if (interprete.email != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _InfoRow(icon: Icons.mail_outline, text: interprete.email!),
+              ),
+            const Spacer(),
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: ElevatedButton.icon(
                     onPressed: onTap,
-                    icon: const Icon(Icons.visibility_outlined, size: 14),
-                    label: const Text('Voir missions', style: TextStyle(fontSize: 12)),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      side: const BorderSide(color: AppTheme.border),
+                    icon: const Icon(Icons.chat_bubble_outline, size: 20),
+                    label: const Text('Contacter'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0F9D70),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                   ),
                 ),
-                if (onDelete != null) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline, size: 16),
-                    color: AppTheme.danger,
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppTheme.danger.withValues(alpha: 0.08),
-                    ),
-                  ),
-                ],
+                const SizedBox(width: 10),
+                _SquareActionButton(
+                  icon: Icons.edit_outlined,
+                  color: AppTheme.primary,
+                  onPressed: onTap,
+                ),
+                const SizedBox(width: 8),
+                _SquareActionButton(
+                  icon: Icons.delete_outline,
+                  color: AppTheme.danger,
+                  onPressed: onDelete,
+                ),
               ],
             ),
           ],
@@ -137,28 +124,61 @@ class InterpreteCard extends StatelessWidget {
   }
 }
 
+class _SquareActionButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onPressed;
+
+  const _SquareActionButton({
+    required this.icon,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 56,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          padding: EdgeInsets.zero,
+          elevation: 0,
+        ),
+        child: Icon(icon, size: 24),
+      ),
+    );
+  }
+}
+
 class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String text;
+
   const _InfoRow({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: AppTheme.textMuted),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
-              overflow: TextOverflow.ellipsis,
+    return Row(
+      children: [
+        Icon(icon, size: 22, color: AppTheme.textMuted),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 16,
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w600,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

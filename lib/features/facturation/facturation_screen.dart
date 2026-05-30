@@ -348,7 +348,7 @@ class _FacturationScreenState extends State<FacturationScreen> {
                 Navigator.pop(ctx, true);
               } catch (e) {
                 if (!ctx.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(ctx).showSnackBar(
                   SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.danger),
                 );
               }

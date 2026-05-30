@@ -20,7 +20,7 @@ class InvoiceModel {
   factory InvoiceModel.fromJson(Map<String, dynamic> j) {
     // date_invoice can be a unix timestamp (int/string) or a date string
     String? dateStr;
-    final raw = j['date_invoice'] ?? j['date'];
+    final raw = j['date_invoice'] ?? j['date'] ?? j['billed_at'] ?? j['created_at'];
     if (raw != null) {
       final ts = int.tryParse(raw.toString());
       if (ts != null && ts > 1000000000) {
@@ -33,12 +33,30 @@ class InvoiceModel {
     }
 
     return InvoiceModel(
-      id: int.tryParse(j['rowid']?.toString() ?? '') ?? 0,
-      ref: j['ref']?.toString() ?? '',
-      clientName: j['nom']?.toString() ?? j['name']?.toString() ?? '',
-      totalHT: double.tryParse(j['total_ht']?.toString() ?? '') ?? 0.0,
-      totalTTC: double.tryParse(j['total_ttc']?.toString() ?? '') ?? 0.0,
-      fkStatut: int.tryParse(j['fk_statut']?.toString() ?? '') ?? 0,
+      id: int.tryParse((j['id'] ?? j['rowid'])?.toString() ?? '') ?? 0,
+      ref: (j['invoice_number'] ?? j['ref'])?.toString() ?? '',
+      clientName: (j['client_name'] ?? j['nom'] ?? j['name'])?.toString() ?? '',
+      totalHT: double.tryParse((j['invoice_total_ht'] ?? j['total_ht'])?.toString() ?? '') ?? 0.0,
+      totalTTC: double.tryParse((j['invoice_total_ttc'] ?? j['total_ttc'])?.toString() ?? '') ?? 0.0,
+      fkStatut: () {
+        final rawStatus = (j['fk_statut'] ?? j['status_code'])?.toString() ?? '';
+        final asInt = int.tryParse(rawStatus);
+        if (asInt != null) return asInt;
+        switch (rawStatus.toLowerCase()) {
+          case 'draft':
+            return 0;
+          case 'sent':
+          case 'validated':
+          case 'unpaid':
+            return 1;
+          case 'paid':
+            return 2;
+          case 'cancelled':
+            return 3;
+          default:
+            return 0;
+        }
+      }(),
       date: dateStr,
     );
   }
